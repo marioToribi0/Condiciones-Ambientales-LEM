@@ -35,11 +35,10 @@ def index():
         
         ## ESTO NO SE DEBE HACER PARA MULTIPLES PETICIONES
         try:
-            excel, labor_days, year, month, bad_temperature, bad_humedity = generar_reporte(data, number=correlative)
+            excel, labor_days, year, month, message_1 = generar_reporte(data, number=correlative, name=name)
             
             subject = f"Informe de control de condiciones ambientales - {year} {month}"
-            message = f"Se identificó las siguientes características:\n\t-Días laborables --> {labor_days}\n\t-Temperatura fuera de los límites --> {bad_temperature}\n\t-Humedad fuera de los intervalos --> {bad_humedity}\n\nEste informe fue realizado por: {name}\nCorrelativo: {correlative}"
-            
+            message = f"Se identificó las siguientes características:\n\t-Días laborables --> {labor_days}\n{message_1}\nEste informe fue realizado por: {name}\nCorrelativo: {correlative}"
             
             send_mail('reportes.lem@outlook.com',EMAILS,subject,message,excel,'smtp-mail.outlook.com', 587,username='reportes.lem@outlook.com',password='instron3369',isTls=True)
             flash("Reporte enviado con éxito", "sucess")

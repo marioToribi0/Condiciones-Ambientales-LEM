@@ -1,5 +1,12 @@
+from csv import excel
 import pandas as pd
 import openpyxl
+
+from datetime import datetime, timedelta
+import pytz
+
+from openpyxl.styles.borders import Border, Side
+from openpyxl import Workbook
 
 import smtplib,ssl
 from email.mime.multipart import MIMEMultipart
@@ -8,7 +15,13 @@ from email.mime.text import MIMEText
 from email.utils import formatdate
 from email import encoders
  
-def generar_reporte(csv, number: str):
+# Object Border
+thin_border = Border(left=Side(style='thin'), 
+                     right=Side(style='thin'), 
+                     top=Side(style='thin'), 
+                     bottom=Side(style='thin'))
+ 
+def generar_reporte(csv, number: str, name: str):
     data = pd.read_csv(csv, sep=";", header=3)
     def cleaned_date(x):
         values = x.split("/")
@@ -62,6 +75,7 @@ def generar_reporte(csv, number: str):
     # Open base excel
     path = f"./static/static"
     wb_obj = openpyxl.load_workbook(f"{path}/base.xlsx") 
+    #wb_obj = openpyxl.load_workbook(f"Base1.xlsx") 
     month = months_name[max_month-1]
 
     sheet_obj = wb_obj['Mes']
@@ -96,10 +110,89 @@ def generar_reporte(csv, number: str):
             cell_obj = sheet_obj.cell(row = day+10, column = b+21)
             cell_obj.value =  humedity[i]
 
-    excel = f"./static/outputs/LEM-F-6.3-01-04 Informe de Control de Condiciones Ambientales v.8 {number}.xlsx"
+    # Agregar en reporte lista de dias
+    resume = pd.DataFrame({"TIME": hour_9_to_1["TIME"], "TEMPERATURE":(hour_2_to_6["oC"].values+hour_9_to_1["oC"].values+hour_7_to_10["oC"].values)/3,
+                       "HUMEDITY": (hour_2_to_6["%RH"].values+hour_9_to_1["%RH"].values+hour_7_to_10["%RH"].values)/3})
+    sheet_obj = wb_obj['Reporte']
+
+    for i in range(len(resume["TIME"])):
+        date = f"{resume['TIME'][i].year}-{int(resume['TIME'][i].month):02d}-{int(resume['TIME'][i].day):02d}"
+        humedity = resume["HUMEDITY"][i]
+        temperature = resume["TEMPERATURE"][i]
+        
+        sheet_obj.cell(row=9+i, column=1).value = date
+        sheet_obj.cell(row=9+i, column=1).border = thin_border
+        
+        sheet_obj.cell(row=9+i, column=2).value = temperature
+        sheet_obj.cell(row=9+i, column=2).border = thin_border
+        
+        sheet_obj.cell(row=9+i, column=3).value = humedity
+        sheet_obj.cell(row=9+i, column=3).border = thin_border
+    # Mensaje
+    data[0]["TANDA"] = "mañana"
+    data[1]["TANDA"] = "tarde"
+    data[2]["TANDA"] = "noche"
+    concat_data = pd.concat(data)
+    min_temperature = concat_data[concat_data["oC"]==concat_data["oC"].min()]
+    max_temperature = concat_data[concat_data["oC"]==concat_data["oC"].max()]
+    min_humedity = concat_data[concat_data["%RH"]==concat_data["%RH"].min()]
+    max_humedity = concat_data[concat_data["%RH"]==concat_data["%RH"].max()]
+    # Add data
+    sheet_obj.cell(row=39, column=11).value = max_temperature["oC"][0]
+    sheet_obj.cell(row=39, column=12).value = max_temperature["TANDA"][0]
+    sheet_obj.cell(row=39, column=13).value = f"{int(max_temperature['TIME'][0].day):02d}"
+    #
+    sheet_obj.cell(row=40, column=11).value = min_temperature["oC"][0]
+    sheet_obj.cell(row=40, column=12).value = min_temperature["TANDA"][0]
+    sheet_obj.cell(row=40, column=13).value = f"{int(min_temperature['TIME'][0].day):02d}"
+    #
+    sheet_obj.cell(row=41, column=11).value = max_humedity["%RH"][0]
+    sheet_obj.cell(row=41, column=12).value = max_humedity["TANDA"][0]
+    sheet_obj.cell(row=41, column=13).value = f"{int(max_humedity['TIME'][0].day):02d}"
+    #
+    sheet_obj.cell(row=42, column=11).value = min_humedity["%RH"][0]
+    sheet_obj.cell(row=42, column=12).value = min_humedity["TANDA"][0]
+    sheet_obj.cell(row=42, column=13).value = f"{int(min_humedity['TIME'][0].day):02d}"
+    #
+    sheet_obj.cell(row=43, column=11).value = bad_humedity
+    sheet_obj.cell(row=43, column=11).value = bad_temperature
+    
+    # Correlativo
+    sheet_obj.cell(row=4, column=10).value = number
+    sheet_obj.cell(row=5, column=2).value = year
+    
+    # Nombre
+    sheet_obj["C39"] = name
+    
+    # Fecha
+    UTC = pytz.utc
+    now = datetime.now(UTC) - timedelta(hours=4)
+
+    sheet_obj["C40"] = f"{now.year}-{now.month}-{now.day:02d}"
+    
+    #excel = f"result.xlsx"
+    excel = f"./static/outputs/LEM-F-6.3-01-08 Informe de Control de Condiciones Ambientales v.1 {number}.xlsx"
     wb_obj.save(excel)
     
-    return excel, labor_days, year, month, bad_temperature, bad_humedity
+    bad_temperature = concat_data.query("oC>=35 or oC<=10")
+    concat_data["RH"] = concat_data["%RH"]
+    bad_humedity = concat_data.query("RH>=80 or RH<=10")
+
+    message = f'''Temperatura máxima: {max_temperature["oC"][0]}ºC {max_temperature["TANDA"][0]} del {int(max_temperature['TIME'][0].day):02d}\nTemperatura mínima: {min_temperature["oC"][0]}ºC {min_temperature["TANDA"][0]} del {int(min_temperature['TIME'][0].day):02d}\nHumedad máxima: {max_humedity["%RH"][0]}ºC {max_humedity["TANDA"][0]} del {int(max_humedity['TIME'][0].day):02d}\nHumedad mínima: {min_humedity["%RH"][0]}ºC {min_humedity["TANDA"][0]} del {int(min_humedity['TIME'][0].day):02d}\n\n'''
+    if (len(bad_temperature)==0):
+        message += f"Temperatura fuera de los límites: {len(bad_temperature)}\n"
+    else:
+        message += f"Temperatura fuera de los límites: {len(bad_temperature)}\n"
+        for i in range(len(bad_temperature)):
+            message += f"\t->{bad_temperature['oC'][i]}ºC {bad_temperature['TANDA'][i]} del {int(bad_temperature['TIME'][i].day):02d}\n"
+    if (len(bad_humedity)==0):
+        message += f"Humedad fuera de los límites: {len(bad_humedity)}\n"
+    else:
+        message += f"Humedad fuera de los límites: {len(bad_humedity)}\n"
+        for i in range(len(bad_humedity)):
+            message += f"\t->{bad_humedity['%RH'][i]}% {bad_humedity['TANDA'][i]} del {int(bad_humedity['TIME'][i].day):02d}\n"
+    
+    return excel, labor_days, year, month, message
 
 def send_mail(send_from,send_to,subject,text,excel,server,port,username='',password='',isTls=True):
     msg = MIMEMultipart()
@@ -123,3 +216,5 @@ def send_mail(send_from,send_to,subject,text,excel,server,port,username='',passw
     smtp.login(username,password)
     smtp.sendmail(send_from, send_to, msg.as_string())
     smtp.quit()
+
+#generar_reporte("./static/static/Registro Huato.csv", "01-22", "Mario T")
