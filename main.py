@@ -23,7 +23,7 @@ app.config['SECRET_KEY'] = secret_key
 with open("lista_de_difusión.txt") as file:
     EMAILS = file.read().split()
 EMAILS = ",".join(EMAILS)
-
+print(EMAILS)
 @app.route("/", methods=["POST", "GET"])
 def index():
     form = Form()
@@ -45,7 +45,8 @@ def index():
             #print("Ready :)")
         except EmptyDataError:
             flash("No has cargado el csv!", "danger")
-        except Exception:
+        except Exception as e:
+            print(e)
             flash("Ha ocurrido un error al enviar el correo. Contacta al administrador", 'danger')
         
     return render_template("index.html", form=form)

@@ -23,6 +23,7 @@ thin_border = Border(left=Side(style='thin'),
  
 def generar_reporte(csv, number: str, name: str):
     data = pd.read_csv(csv, sep=";", header=3)
+    data.columns = ['SN', 'DATE', 'TIME', 'oC', '%RH', 'DP']
     def cleaned_date(x):
         values = x.split("/")
         return f"{int(values[0]):02d}/{int(values[1]):02d}/{int(values[2])}"
@@ -111,8 +112,37 @@ def generar_reporte(csv, number: str, name: str):
             cell_obj.value =  humedity[i]
 
     # Agregar en reporte lista de dias
-    resume = pd.DataFrame({"TIME": hour_9_to_1["TIME"], "TEMPERATURE":(hour_2_to_6["oC"].values+hour_9_to_1["oC"].values+hour_7_to_10["oC"].values)/3,
-                       "HUMEDITY": (hour_2_to_6["%RH"].values+hour_9_to_1["%RH"].values+hour_7_to_10["%RH"].values)/3})
+    
+    mean_temperature = []
+    for i in range(len(hour_9_to_1['oC'])):
+        actual = 0
+        n = 1
+        actual += hour_9_to_1['oC'][i]
+        if (len(hour_2_to_6["oC"])==len(hour_9_to_1) and i==len(hour_9_to_1)-1):
+            n += 1
+            actual += hour_2_to_6['oC'][i]
+        if (len(hour_7_to_10["oC"])==len(hour_9_to_1) and i==len(hour_9_to_1)-1):
+            n += 1
+            actual += hour_7_to_10['oC'][i]
+        
+        mean_temperature.append(actual/n)
+    mean_humedity = []
+    for i in range(len(hour_9_to_1['%RH'])):
+        actual = 0
+        n = 1
+        actual += hour_9_to_1['%RH'][i]
+        if (len(hour_2_to_6["%RH"])==len(hour_9_to_1) and i==len(hour_9_to_1)-1):
+            n += 1
+            actual += hour_2_to_6['%RH'][i]
+        if (len(hour_7_to_10["%RH"])==len(hour_9_to_1) and i==len(hour_9_to_1)-1):
+            n += 1
+            actual += hour_7_to_10['%RH'][i]
+        
+        mean_humedity.append(actual/n)
+
+    
+    resume = pd.DataFrame({"TIME": hour_9_to_1["TIME"], "TEMPERATURE":mean_temperature,
+                       "HUMEDITY": mean_humedity})
     sheet_obj = wb_obj['Reporte']
 
     for i in range(len(resume["TIME"])):
