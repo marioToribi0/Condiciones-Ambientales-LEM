@@ -12,4 +12,4 @@ Ejemplo en la consola:
   pip install Flask==2.0.3
 
 ## Cambios
-Si se desea cambiar los correos del mensaje esto se realiza en "lista_de_difusión.txt"
+Si se desea cambiar los correos del mensaje, modificar "lista_de_difusión.txt"
