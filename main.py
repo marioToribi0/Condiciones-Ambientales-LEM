@@ -42,7 +42,7 @@ def index():
             subject = f"Informe de control de condiciones ambientales - {year} {month}"
             message = f"Se identificó las siguientes características:\n\t-Días laborables --> {labor_days}\n{message_1}\nEste informe fue realizado por: {name}\nCorrelativo: {correlative}"
             
-            send_mail('reportes.lem@outlook.com',EMAILS,subject,message,excel,'smtp-mail.outlook.com', 587,username=USER,password=PASSWORD,isTls=True)
+            send_mail(USER,EMAILS,subject,message,excel,'smtp-mail.outlook.com', 587,username=USER,password=PASSWORD,isTls=True)
             flash("Reporte enviado con éxito", "sucess")
             #print("Ready :)")
         except EmptyDataError:
