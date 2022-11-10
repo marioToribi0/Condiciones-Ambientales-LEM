@@ -14,8 +14,8 @@ from pandas.errors import EmptyDataError
 load_dotenv(find_dotenv())
 
 secret_key = environ["SECRET_KEY"]
-user = environ['EMAIL']
-password = environ['PASSWORD']
+USER = environ['EMAIL']
+PASSWORD = environ['PASSWORD']
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secret_key
@@ -42,7 +42,7 @@ def index():
             subject = f"Informe de control de condiciones ambientales - {year} {month}"
             message = f"Se identificó las siguientes características:\n\t-Días laborables --> {labor_days}\n{message_1}\nEste informe fue realizado por: {name}\nCorrelativo: {correlative}"
             
-            send_mail('reportes.lem@outlook.com',EMAILS,subject,message,excel,'smtp-mail.outlook.com', 587,username='reportes.lem@outlook.com',password='instron3369',isTls=True)
+            send_mail('reportes.lem@outlook.com',EMAILS,subject,message,excel,'smtp-mail.outlook.com', 587,username=USER,password=PASSWORD,isTls=True)
             flash("Reporte enviado con éxito", "sucess")
             #print("Ready :)")
         except EmptyDataError:
