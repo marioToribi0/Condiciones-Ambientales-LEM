@@ -22,7 +22,7 @@ thin_border = Border(left=Side(style='thin'),
                      bottom=Side(style='thin'))
  
 def generar_reporte(csv, number: str, name: str):
-    data = pd.read_csv(csv, sep=";", header=3)
+    data = pd.read_csv(csv, sep=";", header=3, encoding='unicode_escape')
     data.columns = ['SN', 'DATE', 'TIME', 'oC', '%RH', 'DP']
     def cleaned_date(x):
         values = x.split("/")
@@ -192,35 +192,58 @@ def generar_reporte(csv, number: str, name: str):
     sheet_obj.cell(row=5, column=2).value = year
     
     # Nombre
-    sheet_obj["C39"] = name
+    sheet_obj["C40"] = name
     
     # Fecha
     UTC = pytz.utc
     now = datetime.now(UTC) - timedelta(hours=4)
 
-    sheet_obj["C40"] = f"{now.year}-{now.month}-{now.day:02d}"
-    
-    #excel = f"result.xlsx"
-    excel = f"./static/outputs/LEM-F-6.3-01-08 Informe de Control de Condiciones Ambientales v.1 {number}.xlsx"
-    wb_obj.save(excel)
+    sheet_obj["C41"] = f"{now.year}-{now.month}-{now.day:02d}"
     
     bad_temperature = concat_data.query("oC>=35 or oC<=10")
     concat_data["RH"] = concat_data["%RH"]
     bad_humedity = concat_data.query("RH>=80 or RH<=10")
 
+
     message = f'''Temperatura máxima: {max_temperature["oC"][0]}ºC {max_temperature["TANDA"][0]} del {int(max_temperature['TIME'][0].day):02d}\nTemperatura mínima: {min_temperature["oC"][0]}ºC {min_temperature["TANDA"][0]} del {int(min_temperature['TIME'][0].day):02d}\nHumedad máxima: {max_humedity["%RH"][0]}ºC {max_humedity["TANDA"][0]} del {int(max_humedity['TIME'][0].day):02d}\nHumedad mínima: {min_humedity["%RH"][0]}ºC {min_humedity["TANDA"][0]} del {int(min_humedity['TIME'][0].day):02d}\n\n'''
+    message_2 = ""
+    
     if (len(bad_temperature)==0):
         message += f"Temperatura fuera de los límites: {len(bad_temperature)}\n"
+        message_2 += f"Temperatura fuera de los límites: {len(bad_temperature)}\n"
     else:
         message += f"Temperatura fuera de los límites: {len(bad_temperature)}\n"
+        message_2 += f"Temperatura fuera de los límites: {len(bad_temperature)} ("
+        
         for i in range(len(bad_temperature)):
             message += f"\t->{bad_temperature['oC'][i]}ºC {bad_temperature['TANDA'][i]} del {int(bad_temperature['TIME'][i].day):02d}\n"
+            message_2 += f"{bad_temperature['oC'][i]}ºC {int(bad_temperature['TIME'][i].day):02d} {bad_temperature['TANDA'][i]}"
+            
+            if (i!=len(bad_temperature)-1):
+                message_2 += f", "
+            else:
+                message_2 += ")\n"
+                
+            
     if (len(bad_humedity)==0):
         message += f"Humedad fuera de los límites: {len(bad_humedity)}\n"
+        message_2 += f"Humedad fuera de los límites: {len(bad_humedity)}\n"
     else:
         message += f"Humedad fuera de los límites: {len(bad_humedity)}\n"
+        message_2 += f"Humedad fuera de los límites: {len(bad_humedity)} ("
         for i in range(len(bad_humedity)):
             message += f"\t->{bad_humedity['%RH'][i]}% {bad_humedity['TANDA'][i]} del {int(bad_humedity['TIME'][i].day):02d}\n"
+            
+            message_2 += f"{bad_humedity['%RH'][i]}% {int(bad_humedity['TIME'][i].day):02d} {bad_humedity['TANDA'][i]}"
+            
+            if (i!=len(bad_humedity)-1):
+                message_2 += f", "
+            else:
+                message_2 += ")\n"
+    
+    sheet_obj["A45"] = message_2
+    excel = f"./static/outputs/LEM-F-6.3-01-08 Registro de Condiciones Ambientales v.1 {number}.xlsx"
+    wb_obj.save(excel)
     
     return excel, labor_days, year, month, message
 
@@ -246,5 +269,3 @@ def send_mail(send_from,send_to,subject,text,excel,server,port,username='',passw
     smtp.login(username,password)
     smtp.sendmail(send_from, send_to, msg.as_string())
     smtp.quit()
-
-#generar_reporte("./static/static/Registro Huato.csv", "01-22", "Mario T")
