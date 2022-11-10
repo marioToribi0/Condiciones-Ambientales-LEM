@@ -14,6 +14,8 @@ from pandas.errors import EmptyDataError
 load_dotenv(find_dotenv())
 
 secret_key = environ["SECRET_KEY"]
+user = environ['EMAIL']
+password = environ['PASSWORD']
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secret_key
